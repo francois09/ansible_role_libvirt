@@ -1,0 +1,11 @@
+---
+# handlers file for libvirt
+# - name: Restart libvirt
+#   service:
+#     name: libvirt
+#     state: restarted
+# 
+# - name: Reload libvirt
+#   service:
+#     name: libvirt
+#     state: reloaded

@@ -1,0 +1,94 @@
+---
+# Install the package
+- name: Install libvirt package (Debian <= 10)
+  apt:
+    name:
+      - python-lxml
+      - python-libvirt
+  when:
+    - libvirt__install
+    - "ansible_distribution_major_version|int <= 10"
+
+- name: Install libvirt package (Debian > 10)
+  apt:
+    name:
+      - python3-lxml
+      - python3-libvirt
+  when:
+    - libvirt__install
+    - "ansible_distribution_major_version|int >= 11"
+
+- name: Install libvirt package
+  apt:
+    name:
+      # - qemu-kvm # if KVM is used
+      # - virt-manager # For graphical envs
+      - libvirt-daemon-system
+      - libvirt-clients
+      - qemu
+      - virtinst # for command virt-install
+      - libosinfo-bin # Just to know Variants
+    update_cache: yes
+    state: present
+  when:
+    - libvirt__install
+
+# Delete default network, even when don't exist
+- name: Delete {{ libvirt__defaultnet }} network
+  virt_net:
+    command: undefine
+    name: "{{ libvirt__defaultnet }}"
+    uri: "{{ libvirt__uri }}"
+  when:
+    - libvirt__configure
+  ignore_errors: yes
+
+# Check if we should create or update
+- name: Get {{ libvirt__netname }} network status
+  virt_net:
+    command: status
+    name: "{{ libvirt__netname }}"
+    uri: "{{ libvirt__uri }}"
+  when:
+    - libvirt__configure
+  register: net_status
+  ignore_errors: yes
+
+- name: Configure {{ libvirt__netname }} network
+  virt_net:
+    command: define
+    name: "{{ libvirt__netname }}"
+    state: present
+    xml: '{{ lookup("template", "bridge.xml") }}'
+    uri: "{{ libvirt__uri }}"
+  when:
+    - libvirt__configure
+    - net_status.failed
+
+- name: ReConfigure {{ libvirt__netname }} network
+  virt_net:
+    command: modify
+    name: "{{ libvirt__netname }}"
+    state: present
+    xml: '{{ lookup("template", "bridge.xml") }}'
+    uri: "{{ libvirt__uri }}"
+  when:
+    - libvirt__configure
+    - not net_status.failed
+
+- name: Set Autostart {{ libvirt__netname }}
+  virt_net:
+    name: "{{ libvirt__netname }}"
+    autostart: "{{ libvirt__network.autostart }}"
+    uri: "{{ libvirt__uri }}"
+  when:
+    - libvirt__configure
+
+- name: Start {{ libvirt__netname }}
+  virt_net:
+    name: "{{ libvirt__netname }}"
+    state: active
+    uri: "{{ libvirt__uri }}"
+  when:
+    - libvirt__configure
+    - libvirt__network.started

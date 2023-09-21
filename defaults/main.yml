@@ -1,0 +1,6 @@
+---
+# defaults file for libvirt
+libvirt__install: False
+libvirt__configure: False
+libvirt__uri: "qemu:///system"
+...
